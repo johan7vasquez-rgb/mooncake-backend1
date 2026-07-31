@@ -1,43 +1,60 @@
 import os
-from flask import Flask, jsonify, request
+from flask import Flask, request, jsonify
 import google.generativeai as genai
 
 app = Flask(__name__)
 
-# Render guardará la API Key de forma segura en las variables de entorno
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_API_KEY)
+# Configurar la API key de Gemini de forma segura desde las variables de entorno de Render
+api_key = os.environ.get("GEMINI_API_KEY")
+if api_key:
+    genai.configure(api_key=api_key)
 
+# Usar el modelo estándar recomendado
+generation_config = {"temperature": 0.7}
 model = genai.GenerativeModel(
     model_name="gemini-1.5-flash",
-    system_instruction=(
-        "Eres Mooncake, un asistente virtual carismático, divertido y súper inteligente. "
-        "Tu usuario y creador es Johan. Responde siempre de forma amigable, clara y fluida."
-    ),
+    generation_config=generation_config
 )
-
 
 @app.route("/", methods=["GET"])
 def home():
-    return "¡Servidor en Render funcionando con Gemini! 🚀", 200
+    return jsonify({"status": "Mooncake OS Backend online 🌙"}), 200
 
-
+# Ruta para el Chat Inteligente
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
-        data = request.get_json(force=True)
-        user_message = data.get("message", "").strip()
-
+        data = request.get_json()
+        user_message = data.get("message", "")
+        
         if not user_message:
-            return jsonify({"response": "Envía un mensaje válido."}), 400
+            return jsonify({"error": "Mensaje vacío"}), 400
 
-        # En Render la llamada estándar de la librería funciona 100% perfecto
+        # Generar respuesta usando Gemini
         response = model.generate_content(user_message)
-        return jsonify({"response": response.text.strip()}), 200
+        bot_response = response.text
+
+        return jsonify({"response": bot_response}), 200
 
     except Exception as e:
-        return jsonify({"response": f"Error en la IA: {str(e)}"}), 500
+        print(f"Error en /chat: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
+# Ruta para la Billetera Digital (¡Añadida para corregir el error 404!)
+@app.route("/api/finance", methods=["POST"])
+def finance():
+    try:
+        data = request.get_json()
+        monto = data.get("monto")
+        descripcion = data.get("descripcion")
+        
+        print(f"Finanza recibida -> Monto: {monto}, Descripcion: {descripcion}")
+        
+        return jsonify({"status": "success", "message": "Movimiento registrado correctamente"}), 200
+
+    except Exception as e:
+        print(f"Error en /api/finance: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=10000)
